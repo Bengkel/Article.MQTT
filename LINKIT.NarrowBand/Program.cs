@@ -18,6 +18,21 @@ namespace LINKIT.NBLTE
         static int _retry = 0;
         static int _maximumRetry = 3;
 
+        static string _deviceId = "<YOUR-DEVICE-NAME>";
+        static string _hubName = "<YOUR-IOT-HUB-NAME>";
+
+        //INFO https://learn.microsoft.com/en-us/azure/iot-hub/iot-hub-dev-guide-sas?tabs=node#authenticating-a-device-to-iot-hub
+        static string _username = $"{_hubName}.azure-devices.net/{_deviceId}/?api-version=2021-04-12";
+
+        //REMARK Generate SAS token for IoT Hub with VS Code
+        static string _password = $"<YOUR-SAS-TOKEN>";
+
+        //INFO https://learn.microsoft.com/en-us/azure/iot-hub/iot-hub-devguide-messages-c2d
+        static string _subTopic = $"devices/{_deviceId}/messages/devicebound/#";
+
+        //INFO https://learn.microsoft.com/en-us/azure/iot-hub/iot-hub-devguide-messages-d2c
+        static string _pubTopic = $"devices/{_deviceId}/messages/events/";
+
         public static void Main()
         {
             //REMARK Display available serial ports
@@ -52,6 +67,26 @@ namespace LINKIT.NBLTE
                 ConnectAccessPoint();
 
             } while (!_success && _retry < _maximumRetry);
+
+            CheckStatus();
+
+            //REMARK Simcom module MQTT subscribe to C2D topic
+            do
+            {
+                _retry++;
+
+                Notify("Subscribe", $"Attempt {_retry}", true);
+
+                ExecuteCommand($"AT+SMSUB=\"{_subTopic}\",1");
+
+            } while (!_success && _retry < _maximumRetry);
+
+            CheckStatus();
+
+            //REMARK For debugging purposes, check MQTT connection status
+            SendTestMessage(2);
+
+            DisconnectMQTT(false);
 
             DisconnectAccessPoint();
 
@@ -341,6 +376,110 @@ namespace LINKIT.NBLTE
                 _serialPort.Close();
 
                 Notify("SerialPort", $"Port closed", false);
+            }
+        }
+
+        /// <summary>
+        /// Connect to the Azure IoT Hub
+        /// </summary>
+        private static void ConnectMQTT(int wait)
+        {
+            try
+            {
+                //REMARK Simcom module MQTT parameter that sets the device/client id
+                ExecuteCommand($"AT+SMCONF=\"CLIENTID\",\"{_deviceId}\"");
+
+                //REMARK Set MQTT time to connect server
+                ExecuteCommand("AT+SMCONF=\"KEEPTIME\",60");
+
+                //REMARK Simcom module MQTT parameter that sets the server URL and port
+                ExecuteCommand($"AT+SMCONF=\"URL\",\"{_hubName}.azure-devices.net\",\"8883\"");
+
+                //REMARK Delete messages after they have been successfully sent
+                ExecuteCommand("AT+SMCONF=\"CLEANSS\",1");
+
+                //REMARK 
+                ExecuteCommand("AT+SMCONF=\"QOS\",1");
+
+                //REMARK Simcom module MQTT parameter that sets the api endpoint for the specific device
+                ExecuteCommand($"AT+SMCONF=\"USERNAME\",\"{_username}\"");
+
+                //REMARK Simcom module MQTT parameter that sets the secure access token
+                ExecuteCommand($"AT+SMCONF=\"PASSWORD\",\"{_password}\"");
+
+                //REMARK Simcom module MQTT open the connection
+                ExecuteCommand("AT+SMCONN", wait);
+
+                if (_success)
+                {
+                    Notify("MQTT", "IoT Hub connected", false);
+                }
+            }
+            catch (Exception exception)
+            {
+                Notify("MQTT", $"{exception.Message}", true);
+
+                ExecuteCommand("+CEDUMP=1");
+
+                _success = false;
+            }
+        }
+
+        /// <summary>
+        /// Disconnect from the Azure IoT Hub
+        /// </summary>
+        /// <param name="skipSubscription">Only disconnect, skip unsunscribe</param>
+        private static void DisconnectMQTT(bool skipSubscription)
+        {
+            if (!skipSubscription)
+            {
+                //REMARK Simcom module MQTT unsubscribe to D2C topic
+                //DEBUG Raises Error, allready disconnected
+                ExecuteCommand("AT+SMSTATE?");
+                ExecuteCommand($"AT+SMUNSUB=\"{_subTopic}\"");
+            }
+
+            //REMARK Simcom module MQTT open the disconnect from hub
+            ExecuteCommand("AT+SMDISC");
+
+            Notify("MQTT", $"Disconnect", false);
+        }
+
+        /// <summary>
+        /// Send message to the serial port
+        /// </summary>
+        /// <param name="message"></param>
+        private static void SendMessage(string message)
+        {
+            try
+            {
+                Notify("Sending", $"Length : {message.Length}", true);
+
+                //REMARK Simcom module MQTT subscribe to D2C topic
+                ExecuteCommand($"AT+SMPUB=\"{_pubTopic}\",{message.Length},1,1");
+
+                //REMARK Simcom module MQTT sends the message
+                ExecuteCommand(message);
+
+                Notify("Sending", $"{message} : {_success}", true);
+            }
+            catch (Exception exception)
+            {
+                Notify("Send", exception.Message.ToString(), true);
+            }
+        }
+
+        /// <summary>
+        /// Send X messages for testing purposes
+        /// </summary>
+        private static void SendTestMessage(int numberOfMessages)
+        {
+            for (int i = 0; i < numberOfMessages;)
+            {
+                var message = $"Message number {i}";
+                i++;
+
+                SendMessage(message);
             }
         }
     }

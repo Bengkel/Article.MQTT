@@ -5,6 +5,12 @@ VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{11A8DD76-328B-46DF-9F39-F559912D0360}") = "LINKIT.NarrowBand", "LINKIT.NarrowBand\LINKIT.NarrowBand.nfproj", "{2DE14402-56DD-487D-A5DB-84F659A9008B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Automation", "Automation", "{951EFBD2-F171-4E56-857A-41AC842DAC26}"
+	ProjectSection(SolutionItems) = preProject
+		automation\iot-hub.ps1 = automation\iot-hub.ps1
+		automation\monitor.ps1 = automation\monitor.ps1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
