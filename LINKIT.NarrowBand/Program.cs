@@ -70,6 +70,25 @@ namespace LINKIT.NBLTE
 
             CheckStatus();
 
+            //REMARK Connect to IoT Hub
+            do
+            {
+                _retry++;
+
+                Notify("MQTT", $"Attempt {_retry}", true);
+
+                if (_retry > 1)
+                {
+                    //REMARK Disconnect on previous attempt error
+                    DisconnectMQTT(true);
+                }
+
+                ConnectMQTT(5000);
+
+            } while (!_success && _retry < _maximumRetry);
+
+            CheckStatus();
+
             //REMARK Simcom module MQTT subscribe to C2D topic
             do
             {
@@ -85,6 +104,9 @@ namespace LINKIT.NBLTE
 
             //REMARK For debugging purposes, check MQTT connection status
             SendTestMessage(2);
+
+            //REMARK Enable for Direct Method test
+            //Thread.Sleep(Timeout.Infinite);
 
             DisconnectMQTT(false);
 
@@ -480,6 +502,8 @@ namespace LINKIT.NBLTE
                 i++;
 
                 SendMessage(message);
+
+                Thread.Sleep(2000);
             }
         }
     }

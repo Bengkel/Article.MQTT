@@ -2,6 +2,7 @@ $resourceGroup = "<YOUR-RESOURCE-GROUP-NAME>"
 $region="westeurope"
 $iotHub = "<YOUR-IOT-HUB-NAME>"
 $deviceId = "<YOUR-DEVICE-NAME>"
+$secondsPerYear = 31556926
 
 #Enbale when you have multiple subscription
 #az account set --subscription "<YOUR-SUBSCRIPTION-ID>"
